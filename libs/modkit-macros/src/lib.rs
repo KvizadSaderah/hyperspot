@@ -9,6 +9,7 @@ use syn::{
     punctuated::Punctuated,
 };
 
+mod domain_model;
 mod grpc_client;
 mod utils;
 
@@ -1060,4 +1061,48 @@ pub fn grpc_client(attr: TokenStream, item: TokenStream) -> TokenStream {
         Ok(expanded) => TokenStream::from(expanded),
         Err(e) => TokenStream::from(e.to_compile_error()),
     }
+}
+
+/// Marks a struct or enum as a domain model, enforcing DDD boundaries at compile time.
+///
+/// This macro:
+/// - Implements `DomainSafe` and `DomainModel` traits for the type
+/// - Validates at compile-time that all fields also implement `DomainSafe`
+///
+/// # Usage
+///
+/// ```rust,ignore
+/// use modkit_macros::domain_model;
+///
+/// #[domain_model]
+/// pub struct User {
+///     pub id: Uuid,
+///     pub email: String,
+///     pub created_at: DateTime<Utc>,
+/// }
+/// ```
+///
+/// # Compile-Time Enforcement
+///
+/// If any field uses an infrastructure type (e.g., `http::StatusCode`, `sqlx::Pool`),
+/// the code will fail to compile with a clear error message:
+///
+/// ```rust,ignore
+/// #[domain_model]
+/// pub struct BadModel {
+///     pub status: http::StatusCode,  // ERROR: `DomainSafe` is not implemented
+/// }
+/// ```
+///
+/// # Supported Types
+///
+/// The following types are pre-approved as `DomainSafe`:
+/// - Primitives: `bool`, `i8`..`i128`, `u8`..`u128`, `f32`, `f64`, `char`, `String`
+/// - Collections: `Vec<T>`, `Option<T>`, `HashMap<K, V>`, `HashSet<T>`, etc.
+/// - Common crates: `uuid::Uuid`, `chrono::DateTime`, `rust_decimal::Decimal`, `url::Url`
+/// - Wrappers: `Box<T>`, `Arc<T>`, `Result<T, E>`
+#[proc_macro_attribute]
+pub fn domain_model(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(item as DeriveInput);
+    TokenStream::from(domain_model::expand_domain_model(&input))
 }

@@ -15,4 +15,6 @@ thiserror = { workspace = true }
 uuid = { workspace = true }
 time = { workspace = true }
 
+modkit = { workspace = true }
+modkit-macros = { workspace = true }
 modkit-security = { path = "../../../libs/modkit-security" }
